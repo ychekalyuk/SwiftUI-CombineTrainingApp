@@ -12,7 +12,11 @@ class PublishedValidationViewModel: ObservableObject {
     @Published var validation: String = ""
     
     init() {
-        
+        $name
+            .map {
+                return $0.isEmpty ? "❌" : "✅"
+            }
+            .assign(to: &$validation)
     }
     
 }
@@ -30,10 +34,7 @@ struct ContentView: View {
             HStack {
                 TextField("name", text: $vm.name)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .onChange(of: vm.name) { value in
-                        message = value.isEmpty ? "❌" : "✅"
-                    }
-                Text(message)
+                Text(vm.validation)
             }
         }
         .padding()
