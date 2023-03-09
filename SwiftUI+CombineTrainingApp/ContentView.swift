@@ -7,13 +7,34 @@
 
 import SwiftUI
 
+class PublishedValidationViewModel: ObservableObject {
+    @Published var name = ""
+    @Published var validation: String = ""
+    
+    init() {
+        
+    }
+    
+}
+
 struct ContentView: View {
+    @StateObject private var vm = PublishedValidationViewModel()
+    @State private var message = ""
+    
     var body: some View {
-        VStack {
+        VStack(spacing: 20) {
+            Text("@Published")
             Image(systemName: "globe")
                 .imageScale(.large)
                 .foregroundColor(.accentColor)
-            Text("Hello, world!")
+            HStack {
+                TextField("name", text: $vm.name)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .onChange(of: vm.name) { value in
+                        message = value.isEmpty ? "❌" : "✅"
+                    }
+                Text(message)
+            }
         }
         .padding()
     }
@@ -24,3 +45,4 @@ struct ContentView_Previews: PreviewProvider {
         ContentView()
     }
 }
+
