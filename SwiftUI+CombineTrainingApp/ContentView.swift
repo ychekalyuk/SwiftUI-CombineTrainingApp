@@ -6,17 +6,20 @@
 //
 
 import SwiftUI
+import Combine
 
 class PublishedValidationViewModel: ObservableObject {
     @Published var name = ""
     @Published var validation: String = ""
+    var cancellable: AnyCancellable?
+    
     
     init() {
-        $name
-            .map {
-                return $0.isEmpty ? "❌" : "✅"
+        cancellable = $name
+            .map { $0.isEmpty ? "❌" : "✅" }
+            .sink { [unowned self] value in
+                self.validation = value
             }
-            .assign(to: &$validation)
     }
     
 }
