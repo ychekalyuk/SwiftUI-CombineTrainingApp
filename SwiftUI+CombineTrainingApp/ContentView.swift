@@ -8,31 +8,26 @@
 import SwiftUI
 import Combine
 
-class CancellingMultiplePipelinesViewModel: ObservableObject {
-    var characterLimit = 30
-    @Published var data = ""
-    @Published var characterCount = 0
-    @Published var countColor = Color.gray
-
+class CurrentValueSubjectViewModel: ObservableObject {
+    
+    var selection = CurrentValueSubject<String, Never>("No Name Selected")
+    var seletionSame = CurrentValueSubject<Bool, Never>(false)
+    var cancellables: [AnyCancellable] = []
+    
     init() {
-        $data
-            .map { data -> Int in
-                return data.count
-                
-            }
-            .assign(to: &$characterCount)
-        
-        $characterCount
-            .map { [unowned self] count -> Color in
-                let eightyPercent = Int(Double(characterLimit) * 0.8)
-                if (eightyPercent...characterLimit).contains(count) {
-                    return Color.yellow
-                } else if count > characterLimit {
-                    return Color.red
+        selection
+            .map { [unowned self] newValue -> Bool in
+                if newValue == selection.value {
+                    return true
+                } else {
+                    return false
                 }
-                return Color.gray
             }
-            .assign(to: &$countColor)
+            .sink { [unowned self] value in
+                seletionSame.value = value
+                objectWillChange.send()
+            }
+            .store(in: &cancellables)
     }
 }
 
@@ -40,17 +35,20 @@ class CancellingMultiplePipelinesViewModel: ObservableObject {
 
 
 struct ContentView: View {
-    @StateObject private var vm = CancellingMultiplePipelinesViewModel()
+    @StateObject private var vm = CurrentValueSubjectViewModel()
     
     var body: some View {
         VStack(spacing: 20) {
-            TextEditor(text: $vm.data)
-                .border(Color.gray, width: 1)
-                .frame(height: 200)
-                .padding()
+            Button("Select Lorenzo") {
+                vm.selection.send("Lorenzo")
+            }
             
-            Text("\(vm.characterCount)/\(vm.characterLimit)")
-                .foregroundColor(vm.countColor)
+            Button("Select Ellen") {
+                vm.selection.value = "Ellen"
+            }
+            
+            Text(vm.selection.value)
+                .foregroundColor(vm.seletionSame.value ? .red : .green)
         }
     }
 }
