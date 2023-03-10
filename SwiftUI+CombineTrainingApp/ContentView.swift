@@ -39,6 +39,10 @@ struct ContentView: View {
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                 Text(vm.validation)
             }
+            Button("Cancel Subscription") {
+                vm.validation = ""
+                vm.cancellable?.cancel()
+            }
         }
         .padding()
     }
