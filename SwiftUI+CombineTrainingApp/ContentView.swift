@@ -8,56 +8,57 @@
 import SwiftUI
 import Combine
 
-class PublishedValidationViewModel: ObservableObject {
-    @Published var data = "Start Data"
-    @Published var status = ""
-    private var cancellablePipeLine: AnyCancellable?
-    
+class CancellingMultiplePipelinesViewModel: ObservableObject {
+    @Published var firstName = ""
+    @Published var firstNameValidation = ""
+    @Published var lastName = ""
+    @Published var lastNameValidation = ""
+    private var validationCancellables: Set<AnyCancellable> = []
     
     init() {
-        cancellablePipeLine = $data
-            .map { [unowned self] value -> String in
-                status = "Processing..."
-                return value
-            }
-            .delay(for: 5, scheduler: RunLoop.main)
+        $firstName
+            .map { $0.isEmpty ? "❌" : "✅" }
             .sink { [unowned self] value in
-                status = "Finished Process"
+                self.firstNameValidation = value
             }
+            .store(in: &validationCancellables)
+        $lastName
+            .map { $0.isEmpty ? "❌" : "✅" }
+            .sink { [unowned self] value in
+                self.lastNameValidation = value
+            }
+            .store(in: &validationCancellables)
     }
     
-    func refreshData() {
-        data = "Refreshed Data"
+    func cancelAllValidations() {
+        validationCancellables.removeAll()
     }
-    
-    func cancel() {
-        status = "Cancelled"
-        cancellablePipeLine?.cancel()
-    }
-    
 }
 
+
+
+
 struct ContentView: View {
-    @StateObject private var vm = PublishedValidationViewModel()
-    @State private var message = ""
+    @StateObject private var vm = CancellingMultiplePipelinesViewModel()
     
     var body: some View {
         VStack(spacing: 20) {
-            Text(vm.data)
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundColor(.accentColor)
-            Button("Refresh Data") {
-                vm.refreshData()
+            HStack {
+                TextField("First Name", text: $vm.firstName)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                Text(vm.firstNameValidation)
             }
             
-            Button("Cancel Subscription") {
-                vm.cancel()
+            HStack {
+                TextField("Last Name", text: $vm.lastName)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                Text(vm.lastNameValidation)
             }
-            .opacity(vm.status == "Processing..." ? 1 : 0)
-            Text(vm.status)
+            
+            Button("Cancel All Validations") {
+                vm.cancelAllValidations()
+            }
         }
-        .padding()
     }
 }
 
