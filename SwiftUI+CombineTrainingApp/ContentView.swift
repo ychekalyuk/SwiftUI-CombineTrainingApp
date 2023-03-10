@@ -9,29 +9,30 @@ import SwiftUI
 import Combine
 
 class CancellingMultiplePipelinesViewModel: ObservableObject {
-    @Published var firstName = ""
-    @Published var firstNameValidation = ""
-    @Published var lastName = ""
-    @Published var lastNameValidation = ""
-    private var validationCancellables: Set<AnyCancellable> = []
-    
+    var characterLimit = 30
+    @Published var data = ""
+    @Published var characterCount = 0
+    @Published var countColor = Color.gray
+
     init() {
-        $firstName
-            .map { $0.isEmpty ? "❌" : "✅" }
-            .sink { [unowned self] value in
-                self.firstNameValidation = value
+        $data
+            .map { data -> Int in
+                return data.count
+                
             }
-            .store(in: &validationCancellables)
-        $lastName
-            .map { $0.isEmpty ? "❌" : "✅" }
-            .sink { [unowned self] value in
-                self.lastNameValidation = value
+            .assign(to: &$characterCount)
+        
+        $characterCount
+            .map { [unowned self] count -> Color in
+                let eightyPercent = Int(Double(characterLimit) * 0.8)
+                if (eightyPercent...characterLimit).contains(count) {
+                    return Color.yellow
+                } else if count > characterLimit {
+                    return Color.red
+                }
+                return Color.gray
             }
-            .store(in: &validationCancellables)
-    }
-    
-    func cancelAllValidations() {
-        validationCancellables.removeAll()
+            .assign(to: &$countColor)
     }
 }
 
@@ -43,21 +44,13 @@ struct ContentView: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            HStack {
-                TextField("First Name", text: $vm.firstName)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                Text(vm.firstNameValidation)
-            }
+            TextEditor(text: $vm.data)
+                .border(Color.gray, width: 1)
+                .frame(height: 200)
+                .padding()
             
-            HStack {
-                TextField("Last Name", text: $vm.lastName)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                Text(vm.lastNameValidation)
-            }
-            
-            Button("Cancel All Validations") {
-                vm.cancelAllValidations()
-            }
+            Text("\(vm.characterCount)/\(vm.characterLimit)")
+                .foregroundColor(vm.countColor)
         }
     }
 }
