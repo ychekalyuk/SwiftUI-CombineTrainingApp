@@ -8,47 +8,45 @@
 import SwiftUI
 import Combine
 
-class CurrentValueSubjectViewModel: ObservableObject {
+enum BombError: Error {
+    case bombError
+}
+
+class EmtyIntroViewModel: ObservableObject {
     
-    var selection = CurrentValueSubject<String, Never>("No Name Selected")
-    var seletionSame = CurrentValueSubject<Bool, Never>(false)
-    var cancellables: [AnyCancellable] = []
+    @Published var dataToView: [String] = []
     
-    init() {
-        selection
-            .map { [unowned self] newValue -> Bool in
-                if newValue == selection.value {
-                    return true
-                } else {
-                    return false
+    func fetch() {
+        let dataIn = ["value 1", "value 2", "value 3", "🧨", "value 5", "value 6"]
+        
+        _ = dataIn.publisher
+            .tryMap { item in
+                if item == "🧨" {
+                    throw BombError.bombError
                 }
+                return item
             }
-            .sink { [unowned self] value in
-                seletionSame.value = value
-                objectWillChange.send()
+            .catch { error in
+                Empty(completeImmediately: true)
             }
-            .store(in: &cancellables)
+            .sink { [unowned self] item in
+                dataToView.append(item)
+            }
     }
 }
 
 
-
-
 struct ContentView: View {
-    @StateObject private var vm = CurrentValueSubjectViewModel()
+    @StateObject private var vm = EmtyIntroViewModel()
     
     var body: some View {
         VStack(spacing: 20) {
-            Button("Select Lorenzo") {
-                vm.selection.send("Lorenzo")
+            List(vm.dataToView, id: \.self) { item in
+                Text(item)
             }
-            
-            Button("Select Ellen") {
-                vm.selection.value = "Ellen"
-            }
-            
-            Text(vm.selection.value)
-                .foregroundColor(vm.seletionSame.value ? .red : .green)
+        }
+        .onAppear {
+            vm.fetch()
         }
     }
 }
