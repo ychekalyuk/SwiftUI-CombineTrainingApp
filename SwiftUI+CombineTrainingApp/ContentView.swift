@@ -8,45 +8,63 @@
 import SwiftUI
 import Combine
 
-enum BombError: Error {
-    case bombError
+enum InvalidAgeError: String, Error, Identifiable {
+    var id: String { rawValue }
+    case lessThanZero = "Cannot be less than zero"
+    case moreThanOneHundred = "Cannot be more than 100"
 }
 
-class EmtyIntroViewModel: ObservableObject {
-    
-    @Published var dataToView: [String] = []
-    
-    func fetch() {
-        let dataIn = ["value 1", "value 2", "value 3", "🧨", "value 5", "value 6"]
+class Validators {
+    static func validAgePublisher(age: Int) -> AnyPublisher<Int, InvalidAgeError> {
+        if age < 0 {
+            return Fail(error: InvalidAgeError.lessThanZero)
+                .eraseToAnyPublisher()
+        } else if age > 100 {
+            return Fail(error: InvalidAgeError.moreThanOneHundred)
+                .eraseToAnyPublisher()
+        }
         
-        _ = dataIn.publisher
-            .tryMap { item in
-                if item == "🧨" {
-                    throw BombError.bombError
+        return Just(age)
+            .setFailureType(to: InvalidAgeError.self)
+            .eraseToAnyPublisher()
+    }
+}
+
+class FailIntroViewModel: ObservableObject {
+    @Published var age = 0
+    @Published var error: InvalidAgeError?
+    
+    func save(age: Int) {
+        _ = Validators.validAgePublisher(age: age)
+            .sink { [unowned self] completion in
+                if case .failure(let error) = completion {
+                    self.error = error
                 }
-                return item
-            }
-            .catch { error in
-                Empty(completeImmediately: true)
-            }
-            .sink { [unowned self] item in
-                dataToView.append(item)
+            } receiveValue: { [unowned self] age in
+                self.age = age
             }
     }
 }
 
 
 struct ContentView: View {
-    @StateObject private var vm = EmtyIntroViewModel()
+    @StateObject private var vm = FailIntroViewModel()
+    @State private var age = ""
     
     var body: some View {
         VStack(spacing: 20) {
-            List(vm.dataToView, id: \.self) { item in
-                Text(item)
+            TextField("Enter Age", text: $age)
+                .keyboardType(UIKeyboardType.numberPad)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .padding()
+            Button("Save") {
+                vm.save(age: Int(age) ?? -1)
             }
+            Text("\(vm.age)")
         }
-        .onAppear {
-            vm.fetch()
+        .font(.title)
+        .alert(item: $vm.error) { error in
+            Alert(title: Text("Invalid Age"), message: Text(error.rawValue))
         }
     }
 }
