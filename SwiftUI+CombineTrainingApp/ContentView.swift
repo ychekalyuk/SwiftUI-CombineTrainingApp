@@ -8,64 +8,51 @@
 import SwiftUI
 import Combine
 
-enum InvalidAgeError: String, Error, Identifiable {
-    var id: String { rawValue }
-    case lessThanZero = "Cannot be less than zero"
-    case moreThanOneHundred = "Cannot be more than 100"
-}
-
-class Validators {
-    static func validAgePublisher(age: Int) -> AnyPublisher<Int, InvalidAgeError> {
-        if age < 0 {
-            return Fail(error: InvalidAgeError.lessThanZero)
-                .eraseToAnyPublisher()
-        } else if age > 100 {
-            return Fail(error: InvalidAgeError.moreThanOneHundred)
-                .eraseToAnyPublisher()
+class FutureIntroViewModel: ObservableObject {
+    @Published var hello = ""
+    @Published var goodbye = ""
+    
+    var goodbyeCancellable: AnyCancellable?
+    
+    func sayHello() {
+        Future<String, Never> { promise in
+            promise(Result.success("Hello, World!"))
+        }
+        .assign(to: &$hello)
+    }
+    
+    func sayGoodbye() {
+        let futurePublisher = Future<String, Never> { promise in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                promise(.success("Goodbye, my friend"))
+            }
         }
         
-        return Just(age)
-            .setFailureType(to: InvalidAgeError.self)
-            .eraseToAnyPublisher()
-    }
-}
-
-class FailIntroViewModel: ObservableObject {
-    @Published var age = 0
-    @Published var error: InvalidAgeError?
-    
-    func save(age: Int) {
-        _ = Validators.validAgePublisher(age: age)
-            .sink { [unowned self] completion in
-                if case .failure(let error) = completion {
-                    self.error = error
-                }
-            } receiveValue: { [unowned self] age in
-                self.age = age
+        goodbyeCancellable = futurePublisher
+            .sink { [unowned self] message in
+                goodbye = message
             }
     }
 }
 
-
 struct ContentView: View {
-    @StateObject private var vm = FailIntroViewModel()
+    @StateObject private var vm = FutureIntroViewModel()
     @State private var age = ""
     
     var body: some View {
         VStack(spacing: 20) {
-            TextField("Enter Age", text: $age)
-                .keyboardType(UIKeyboardType.numberPad)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .padding()
-            Button("Save") {
-                vm.save(age: Int(age) ?? -1)
+            Button("Say Hello") {
+                vm.sayHello()
             }
-            Text("\(vm.age)")
+            Text(vm.hello)
+                .padding(.bottom)
+            Button("Say Goodbye") {
+                vm.sayGoodbye()
+            }
+            Text(vm.goodbye)
+            Spacer()
         }
         .font(.title)
-        .alert(item: $vm.error) { error in
-            Alert(title: Text("Invalid Age"), message: Text(error.rawValue))
-        }
     }
 }
 
